@@ -4,23 +4,21 @@ version = "0.15.0"
 edition = "2021"
 resolver = "2"
 description = "Frame pacing and frame limiting for Bevy"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/aevyrie/bevy_framepace"
+license = "MIT"
+repository = "https://github.com/ka-de/bevy_framepace"
 documentation = "https://docs.rs/bevy_framepace"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-bevy_app = "0.13"
-bevy_ecs = "0.13"
-bevy_diagnostic = "0.13"
-bevy_log = "0.13"
-bevy_render = "0.13"
-bevy_reflect = "0.13"
-bevy_time = "0.13"
-bevy_utils = "0.13"
-bevy_window = "0.13"
-bevy_winit = "0.13"
+bevy_app = "0.13.2"
+bevy_ecs = "0.13.2"
+bevy_diagnostic = "0.13.2"
+bevy_log = "0.13.2"
+bevy_render = "0.13.2"
+bevy_reflect = "0.13.2"
+bevy_time = "0.13.2"
+bevy_utils = "0.13.2"
+bevy_window = "0.13.2"
+bevy_winit = "0.13.2"
 # Non-bevy
 spin_sleep = "1.0"
 
@@ -29,7 +27,7 @@ default = ["framepace_debug", "bevy_winit/x11"]
 framepace_debug = []
 
 [dev-dependencies]
-bevy = { version = "0.13", default-features = false, features = [
+bevy = { version = "0.13.2", default-features = false, features = [
     "bevy_gizmos",
     "bevy_text",
     "bevy_ui",
