@@ -30,20 +30,25 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_reflect::prelude::*;
-use bevy_render::{pipelined_rendering::RenderExtractApp, Render, RenderApp, RenderSet};
+use bevy_render::{ Render, RenderApp, RenderSet };
 use bevy_utils::Instant;
 use bevy_window::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
+use bevy_render::pipelined_rendering::RenderExtractApp;
+
+#[cfg(not(target_arch = "wasm32"))]
 use bevy_winit::WinitWindows;
 
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{ sync::{ Arc, Mutex }, time::Duration };
 
 #[cfg(feature = "framepace_debug")]
 pub mod debug;
+
+/// A dummy label for the subapp of the rendered pipeline that does not exist in wasm32
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, bevy_app::AppLabel)]
+struct RenderExtractApp;
 
 /// Adds framepacing and framelimiting functionality to your [`App`].
 #[derive(Debug, Clone, Component)]
@@ -81,9 +86,7 @@ impl Plugin for FramepacePlugin {
                 .insert_resource(stats)
                 .add_systems(
                     Render,
-                    framerate_limiter
-                        .in_set(RenderSet::Cleanup)
-                        .after(World::clear_entities),
+                    framerate_limiter.in_set(RenderSet::Cleanup).after(World::clear_entities)
                 );
         }
     }
@@ -119,7 +122,10 @@ struct FramepaceSettingsProxy {
 
 impl FramepaceSettingsProxy {
     fn is_enabled(&self) -> bool {
-        self.limiter.try_lock().iter().any(|l| l.is_enabled())
+        self.limiter
+            .try_lock()
+            .iter()
+            .any(|l| l.is_enabled())
     }
 }
 
@@ -190,13 +196,16 @@ fn get_display_refresh_rate(
     settings: Res<FramepaceSettings>,
     winit: NonSend<WinitWindows>,
     windows: Query<Entity, With<Window>>,
-    frame_limit: Res<FrametimeLimit>,
+    frame_limit: Res<FrametimeLimit>
 ) {
     let new_frametime = match settings.limiter {
-        Limiter::Auto => match detect_frametime(winit, windows.iter()) {
-            Some(frametime) => frametime,
-            None => return,
-        },
+        Limiter::Auto =>
+            match detect_frametime(winit, windows.iter()) {
+                Some(frametime) => frametime,
+                None => {
+                    return;
+                }
+            }
         Limiter::Manual(frametime) => frametime,
         Limiter::Off => {
             #[cfg(feature = "framepace_debug")]
@@ -219,16 +228,18 @@ fn get_display_refresh_rate(
 #[cfg(not(target_arch = "wasm32"))]
 fn detect_frametime(
     winit: NonSend<WinitWindows>,
-    windows: impl Iterator<Item = Entity>,
+    windows: impl Iterator<Item = Entity>
 ) -> Option<Duration> {
     let best_framerate = {
-        windows
-            .filter_map(|e| winit.get_window(e))
-            .filter_map(|w| w.current_monitor())
-            .filter_map(|monitor| monitor.refresh_rate_millihertz())
-            .min()? as f64
-            / 1000.0
-            - 0.5 // Winit only provides integer refresh rate values. We need to round down to handle the worst case scenario of a rounded refresh rate.
+        (
+            windows
+                .filter_map(|e| winit.get_window(e))
+                .filter_map(|w| w.current_monitor())
+                .filter_map(|monitor| monitor.refresh_rate_millihertz())
+                .min()? as f64
+        ) /
+            1000.0 -
+            0.5 // Winit only provides integer refresh rate values. We need to round down to handle the worst case scenario of a rounded refresh rate.
     };
 
     let best_frametime = Duration::from_secs_f64(1.0 / best_framerate);
@@ -255,18 +266,13 @@ fn framerate_limiter(
     mut timer: ResMut<FrameTimer>,
     target_frametime: Res<FrametimeLimit>,
     stats: Res<FramePaceStats>,
-    settings: Res<FramepaceSettingsProxy>,
+    settings: Res<FramepaceSettingsProxy>
 ) {
     if let Ok(limit) = target_frametime.0.try_lock() {
         let frame_time = timer.sleep_end.elapsed();
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let oversleep = stats
-                .oversleep
-                .try_lock()
-                .as_deref()
-                .cloned()
-                .unwrap_or_default();
+            let oversleep = stats.oversleep.try_lock().as_deref().cloned().unwrap_or_default();
             let sleep_time = limit.saturating_sub(frame_time + oversleep);
             if settings.is_enabled() {
                 spin_sleep::sleep(sleep_time);
